@@ -6,6 +6,10 @@ from pydantic import BaseModel, Field
 
 from app.rag import answer
 
+from fastapi import FastAPI, HTTPException, Request
+from app.guard import check_input, check_output
+from app.rag import PROMPT, answer
+
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="rag-guide")
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
@@ -31,4 +35,9 @@ def health():
 
 @app.post("/ask")
 def ask_api(body: Question):
-    return answer(body.q)
+    reason = check_input(body.q)
+    if reason:
+        raise HTTPException(status_code=400, detail=reason)
+    res = answer(body.q)
+    res["answer"] = check_output(res["answer"], PROMPT)
+    return res
